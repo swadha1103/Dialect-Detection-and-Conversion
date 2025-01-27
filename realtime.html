@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Dialect Detection</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            color: #fff;
+            background: #000;
+            overflow-x: hidden;
+        }
+
+        video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .back-link {
+            color: #00ff88;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            transition: color 0.3s ease;
+        }
+
+        .back-link:hover {
+            color: #00ffee;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            background: linear-gradient(45deg, #00ff88, #00ffee);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .detection-container {
+            background: rgba(20, 20, 50, 0.7);
+            backdrop-filter: blur(15px);
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 255, 136, 0.2);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+        }
+
+        .recording-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            color: #ff4136;
+            margin: 1rem 0;
+            padding: 0.5rem;
+            background: rgba(255, 65, 54, 0.1);
+            border-radius: 8px;
+        }
+
+        .recording-dot {
+            width: 12px;
+            height: 12px;
+            background-color: #ff4136;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        #startRecording {
+            background: linear-gradient(45deg, #00ff88, #00ffee);
+            color: #000;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+
+        #startRecording:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 15px rgba(0, 255, 136, 0.3);
+        }
+
+        .result-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+
+        .section-title {
+            color: #00ff88;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .audio-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 0.5rem;
+        }
+
+        .text-content {
+            flex-grow: 1;
+            line-height: 1.5;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .play-button, .stop-button {
+            background: linear-gradient(45deg, #00ff88, #00ffee);
+            color: #000;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .play-button:hover, .stop-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 8px rgba(0, 255, 136, 0.3);
+        }
+
+        .play-button.playing {
+            background: linear-gradient(45deg, #ff4136, #ff6b6b);
+        }
+
+        #targetDialect {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            color: #fff;
+            margin: 1rem 0;
+        }
+
+        #targetDialect option {
+            background: #1a1a2e;
+            color: #fff;
+        }
+
+        #translate {
+            background: linear-gradient(45deg, #00ffee, #00ff88);
+            color: #000;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            width: 100%;
+        }
+
+        #translate:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 15px rgba(0, 255, 136, 0.3);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #error {
+            background: rgba(255, 65, 54, 0.2);
+            border: 1px solid rgba(255, 65, 54, 0.4);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            backdrop-filter: blur(5px);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .floating-menu {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1000;
+        }
+
+        .floating-button {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .floating-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+        }
+
+        .modal-content {
+            position: relative;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            margin: 15% auto;
+            padding: 20px;
+            width: 70%;
+            max-width: 500px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .close {
+            position: absolute;
+            right: 20px;
+            top: 10px;
+            font-size: 28px;
+            cursor: pointer;
+        }
+
+    </style>
+</head>
+<body>
+    <video autoplay muted loop>
+        <source src="https://cdn.dribbble.com/userupload/15822192/file/original-3268ba7ca95d196ad6499e038b6c7fba.mp4" type="video/mp4">
+    </video>
+
+ <!-- Floating Menu -->
+ <div class="floating-menu">
+    <div class="floating-button" onclick="window.location.href='/'">
+        <i class="fas fa-home"></i>
+    </div>
+    <div class="floating-button" onclick="downloadReport()">
+        <i class="fas fa-file-pdf"></i>
+    </div>
+    <div class="floating-button" onclick="openAboutModal()">
+        <i class="fas fa-info"></i>
+    </div>
+</div>
+
+<!-- About Modal -->
+<div id="aboutModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeAboutModal()">&times;</span>
+        <h2 class="text-2xl font-bold mb-4">About Project</h2>
+        <p class="mb-4">Kannada Dialect Detection project aims to identify and analyze different dialects of the
+            Kannada language using advanced audio processing techniques.</p>
+        <p>Version: 1.0.0</p>
+    </div>
+</div>
+
+    <div class="container">
+        <a href="/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Home
+        </a>
+
+        <h1>Real-time Dialect Detection</h1>
+        
+        <div class="detection-container">
+            <button id="startRecording">
+                <i class="fas fa-microphone"></i> Start Recording
+            </button>
+
+            <div id="recordingIndicator" class="hidden recording-indicator">
+                <div class="recording-dot"></div>
+                <span>Listening...</span>
+            </div>
+            
+            <div id="result" class="hidden">
+                <div class="result-section">
+                    <h3 class="section-title">User Detected Language</h3>
+                    <div class="audio-controls">
+                        <div id="transcription" class="text-content"></div>
+                        <div class="control-buttons">
+                            <button onclick="toggleAudio('transcription')" class="play-button">
+                                <i class="fas fa-play"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="result-section">
+                    <h3 class="section-title">Dialect Analysis</h3>
+                    <div class="audio-controls">
+                        <div id="analysis" class="text-content"></div>
+                        <div class="control-buttons">
+                            <button onclick="toggleAudio('analysis')" class="play-button">
+                                <i class="fas fa-play"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="result-section">
+                    <h3 class="section-title">Try in your Dialect</h3>
+                    <select id="targetDialect">
+                        {% for dialect in dialects %}
+                        <option value="{{ dialect }}">{{ dialect }}</option>
+                        {% endfor %}
+                    </select>
+                    <button id="translate">
+                        <i class="fas fa-language"></i> Convert
+                    </button>
+                </div>
+                
+                <div id="translation" class="hidden result-section">
+                    <h3 class="section-title">In your Dialect</h3>
+                    <div class="audio-controls">
+                        <div id="translatedText" class="text-content"></div>
+                        <div class="control-buttons">
+                            <button onclick="toggleAudio('translatedText')" class="play-button">
+                                <i class="fas fa-play"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="error" class="hidden"></div>
+        </div>
+    </div>
+    
+    <script>
+        let currentAudio = null;
+        let currentPlayingButton = null;
+
+        document.getElementById('startRecording').addEventListener('click', async () => {
+            const recordingIndicator = document.getElementById('recordingIndicator');
+            recordingIndicator.classList.remove('hidden');
+            
+            try {
+                const response = await fetch('/transcribe', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    document.getElementById('result').classList.remove('hidden');
+                    document.getElementById('transcription').textContent = data.transcription;
+                    document.getElementById('analysis').textContent = data.analysis;
+                } else {
+                    showError(data.message);
+                }
+            } catch (error) {
+                showError('Error recording audio');
+            } finally {
+                recordingIndicator.classList.add('hidden');
+            }
+        });
+
+        document.getElementById('translate').addEventListener('click', async () => {
+            const text = document.getElementById('transcription').textContent;
+            const targetDialect = document.getElementById('targetDialect').value;
+            
+            try {
+                const response = await fetch('/translate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text, target_dialect: targetDialect })
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    document.getElementById('translation').classList.remove('hidden');
+                    document.getElementById('translatedText').textContent = data.translation;
+                } else {
+                    showError(data.message);
+                }
+            } catch (error) {
+                showError('Error translating text');
+            }
+        });
+
+        async function toggleAudio(elementId) {
+            const button = document.querySelector(`#${elementId}`).nextElementSibling.querySelector('.play-button');
+            
+            if (currentAudio && currentPlayingButton === button) {
+                stopCurrentAudio();
+                return;
+            }
+
+            if (currentAudio) {
+                stopCurrentAudio();
+            }
+
+            const text = document.getElementById(elementId).textContent;
+            if (!text) return;
+
+            try {
+                const response = await fetch('/text-to-speech', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    const audio = new Audio('data:audio/mp3;base64,' + data.audio);
+                    currentAudio = audio;
+                    currentPlayingButton = button;
+                    
+                    button.classList.add('playing');
+                    button.innerHTML = '<i class="fas fa-pause"></i>';
+
+                    await audio.play();
+
+                    audio.onended = () => {
+                        stopCurrentAudio();
+                    };
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (err) {
+                showError('Audio playback error: ' + err.message);
+            }
+        }
+
+        function stopCurrentAudio() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+            if (currentPlayingButton) {
+                currentPlayingButton.classList.remove('playing');
+                currentPlayingButton.innerHTML = '<i class="fas fa-play"></i>';
+                currentPlayingButton = null;
+            }
+        }
+
+        function showError(message) {
+            const error = document.getElementById('error');
+            error.textContent = message;
+            error.classList.remove('hidden');
+            setTimeout(() => {
+                error.classList.add('hidden');
+            }, 3000);
+        }
+
+                // Modal functions
+                function openAboutModal() {
+            document.getElementById('aboutModal').style.display = 'block';
+            gsap.from('.modal-content', {
+                opacity: 0,
+                y: -50,
+                duration: 0.3
+            });
+        }
+
+        function closeAboutModal() {
+            document.getElementById('aboutModal').style.display = 'none';
+        }
+
+        function downloadReport() {
+            const pdfUrl = '/static/Report/Kannada Dialect Detector.pdf';  // relative web path
+            window.open(pdfUrl, '_blank');
+        }
+
+    </script>
+</body>
+</html>

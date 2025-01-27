@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Real-time Dialect Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-8 text-center">Real-time Dialect Detection</h1>
+        
+        <div class="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-md">
+            <button id="startRecording" class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 mb-4">
+                Start Recording
+            </button>
+            
+            <div id="result" class="mt-4 hidden">
+                <h3 class="font-bold mb-2">Transcription:</h3>
+                <p id="transcription" class="mb-4 p-3 bg-gray-100 rounded"></p>
+                
+                <h3 class="font-bold mb-2">Dialect Analysis:</h3>
+                <p id="analysis" class="mb-4 p-3 bg-gray-100 rounded"></p>
+                
+                <div class="mt-4">
+                    <label class="block mb-2">Translate to:</label>
+                    <select id="targetDialect" class="w-full p-2 border rounded mb-2">
+                        {% for dialect in dialects %}
+                        <option value="{{ dialect }}">{{ dialect }}</option>
+                        {% endfor %}
+                    </select>
+                    <button id="translate" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                        Translate
+                    </button>
+                </div>
+                
+                <div id="translation" class="mt-4 hidden">
+                    <h3 class="font-bold mb-2">Translation:</h3>
+                    <p id="translatedText" class="p-3 bg-gray-100 rounded"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    document.getElementById('startRecording').addEventListener('click', async () => {
+        try {
+            const response = await fetch('/transcribe', { method: 'POST' });
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                document.getElementById('result').classList.remove('hidden');
+                document.getElementById('transcription').textContent = data.transcription;
+                document.getElementById('analysis').textContent = data.analysis;
+            } else {
+                alert(data.message);
+            }
+        } catch (error) {
+            alert('Error recording audio');
+        }
+    });
+
+    document.getElementById('translate').addEventListener('click', async () => {
+        const text = document.getElementById('transcription').textContent;
+        const targetDialect = document.getElementById('targetDialect').value;
+        
+        try {
+            const response = await fetch('/translate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ text, target_dialect: targetDialect })
+            });
+            
+            const data = await response.json();
+            if (data.status === 'success') {
+                document.getElementById('translation').classList.remove('hidden');
+                document.getElementById('translatedText').textContent = data.translation;
+            } else {
+                alert(data.message);
+            }
+        } catch (error) {
+            alert('Error translating text');
+        }
+    });
+    </script>
+</body>
+</html>

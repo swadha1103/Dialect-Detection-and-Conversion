@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Local File Dialect Detection</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2196f3;
+            --primary-dark: #1976d2;
+            --text: #ffffff;
+            --background: rgba(20, 20, 50, 0.7);
+            --glass: rgba(20, 20, 50, 0.7);
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
+            color: var(--text);
+            overflow-x: hidden;
+        }
+
+        video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+
+        .glass-container {
+            background: rgba(20, 20, 50, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            #targetDialect option {
+            background: #1a1a2e;
+            color: #fff;
+        }
+
+
+        }
+
+        .floating-menu {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1000;
+        }
+
+        .floating-button {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .floating-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+        }
+
+        .modal-content {
+            position: relative;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            margin: 15% auto;
+            padding: 20px;
+            width: 70%;
+            max-width: 500px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .close {
+            position: absolute;
+            right: 20px;
+            top: 10px;
+            font-size: 28px;
+            cursor: pointer;
+        }
+
+        .file-drop-zone {
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .file-drop-zone.dragover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: var(--primary);
+        }
+
+        .play-button {
+            background: rgba(33, 150, 243, 0.3);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .play-button:hover {
+            background: rgba(33, 150, 243, 0.5);
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 2px;
+        }
+        h1 {
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            background: linear-gradient(45deg, #00ff88, #00ffee);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+    </style>
+</head>
+
+<body class="bg-black">
+    <video autoplay muted loop>
+        <source src="https://cdn.dribbble.com/userupload/15822084/file/original-6a1c77f74b5bd565f2f30edb00824337.mp4"
+            type="video/mp4">
+    </video>
+
+    <!-- Floating Menu -->
+    <div class="floating-menu">
+        <div class="floating-button" onclick="window.location.href='/'">
+            <i class="fas fa-home"></i>
+        </div>
+        <div class="floating-button" onclick="downloadReport()">
+            <i class="fas fa-file-pdf"></i>
+        </div>
+        <div class="floating-button" onclick="openAboutModal()">
+            <i class="fas fa-info"></i>
+        </div>
+    </div>
+
+    <!-- About Modal -->
+    <div id="aboutModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeAboutModal()">&times;</span>
+            <h2 class="text-2xl font-bold mb-4">About Project</h2>
+            <p class="mb-4">Kannada Dialect Detection project aims to identify and analyze different dialects of the
+                Kannada language using advanced audio processing techniques.</p>
+            <p>Version: 1.0.0</p>
+        </div>
+    </div>
+
+    <div class="container mx-auto px-4 py-8">
+        <div class="glass-container max-w-4xl mx-auto">
+            <h1 class="text-3xl font-bold mb-8 text-center">Kannada Dialect Detection</h1>
+
+            <!-- File Upload Section -->
+            <div class="file-drop-zone mb-6" id="dropZone">
+                <i class="fas fa-cloud-upload-alt text-4xl mb-4"></i>
+                <p class="mb-2">Drag & Drop audio file here or</p>
+                <input type="file" accept="audio/*" id="audioFile" class="hidden">
+                <button onclick="document.getElementById('audioFile').click()"
+                style="background: linear-gradient(45deg, #00ffee, #00ff88); color: #000; border: none; padding: 0.75rem 1.5rem; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; font-weight: 600; width: 100%;"
+                class="hover:bg-blue-600 transition-colors">
+            <i class="fas fa-file mr-2"></i>
+            Choose File
+        </button>
+        
+                <p id="fileName" class="mt-2 text-sm"></p>
+            </div>
+
+<button id="uploadButton"
+        style="background: linear-gradient(45deg, #00ffee, #00ff88); color: #000; border: none; padding: 0.75rem 1.5rem; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; font-weight: 600; width: 100%;"
+        class="hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed mb-4">
+    <i class="fas fa-upload mr-2"></i>
+    Upload and Analyze
+</button>
+
+
+<!-- Progress Bar -->
+<div id="progressContainer" class="hidden mb-4" style="width: 100%; height: 20px; background-color: #eee; border-radius: 10px;">
+    <div class="progress-bar" style="height: 100%; width: 0%; background: linear-gradient(45deg, #00ffee, #ff00aaa3); border-radius: 10px;"></div>
+</div>
+
+<!-- Loading Indicator -->
+<div id="loading" class="hidden mt-4">
+    <div class="flex items-center justify-center">
+        <div style="animation: spin 1s linear infinite; width: 32px; height: 32px; border-radius: 50%; 
+                    background: linear-gradient(rgba(13, 13, 13, 0.201), rgba(0, 0, 0, 0.012)), linear-gradient(45deg, #00ffee, #ff00aaa3);
+                    background-origin: border-box; 
+                    background-clip: content-box, border-box;
+                    border: 4px solid transparent;">
+        </div>
+        <span style="margin-left: 8px; color: #ffffff;">Processing audio...</span>
+    </div>
+</div>
+
+
+            <!-- Results Section -->
+            <div id="result" class="mt-6 hidden">
+                <!-- Transcription -->
+                <div class="mb-6 glass-container">
+                    <h3 class="font-bold text-lg mb-2">User Detected Language</h3>
+                    <div class="flex items-start space-x-4">
+                        <div id="transcription"
+                            class="flex-grow p-4 rounded-lg border border-gray-200 bg-opacity-10 bg-white"></div>
+                        <button onclick="toggleAudio('transcription')" class="play-button text-white p-3 rounded-full">
+                            <i class="fas fa-play"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Dialect Analysis -->
+                <div class="mb-6 glass-container">
+                    <h3 class="font-bold text-lg mb-2">Dialect Analysis:</h3>
+                    <div class="flex items-start space-x-4">
+                        <div id="analysis"
+                            class="flex-grow p-4 rounded-lg border border-gray-200 bg-opacity-10 bg-white whitespace-pre-line">
+                        </div>
+                        <button onclick="toggleAudio('analysis')" class="play-button text-white p-3 rounded-full">
+                            <i class="fas fa-play"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Translation Section -->
+                <div class="glass-container">
+                    <h3 class="font-bold text-lg mb-2">Try in your Dialect</h3>
+                    <select id="targetDialect"
+                        class="w-full p-2 rounded-lg mb-4 bg-opacity-20 bg-white text-white border border-gray-200">
+                        {% for dialect in dialects %}
+                        <option value="{{ dialect }}">{{ dialect }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <button id="translateButton"
+                    style="background: linear-gradient(45deg, #00ffee, #00ff88); color: #000; border: none; padding: 0.75rem 1.5rem; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; font-weight: 600; width: 100%;"
+                    class="hover:bg-green-600 transition-colors">
+                <i class="fas fa-language mr-2"></i>
+                Convert
+            </button>
+            
+
+                    <!-- Translation Result -->
+                    <div id="translationResult" class="mt-6 hidden">
+                        <h3 class="font-bold text-lg mb-2">In your Dialect</h3>
+                        <div class="flex items-start space-x-4">
+                            <div id="translatedText"
+                                class="flex-grow p-4 rounded-lg border border-gray-200 bg-opacity-10 bg-white whitespace-pre-line">
+                            </div>
+                            <button onclick="toggleAudio('translatedText')"
+                                class="play-button text-white p-3 rounded-full">
+                                <i class="fas fa-play"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error Display -->
+            <div id="error" class="hidden mt-4 p-4 bg-red-500 bg-opacity-20 text-red-100 rounded-lg"></div>
+        </div>
+    </div>
+
+    <script>
+        // Elements
+        const audioFile = document.getElementById('audioFile');
+        const uploadButton = document.getElementById('uploadButton');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        const error = document.getElementById('error');
+        const transcription = document.getElementById('transcription');
+        const analysis = document.getElementById('analysis');
+        const translateButton = document.getElementById('translateButton');
+        const translationResult = document.getElementById('translationResult');
+        const translatedText = document.getElementById('translatedText');
+        const dropZone = document.getElementById('dropZone');
+        const fileName = document.getElementById('fileName');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.querySelector('.progress-bar');
+
+        // Drag and drop handlers
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length) {
+                audioFile.files = files;
+                updateFileName(files[0].name);
+                uploadButton.disabled = false;
+            }
+        });
+
+        // File selection handler
+        audioFile.addEventListener('change', () => {
+            uploadButton.disabled = !audioFile.files.length;
+            if (audioFile.files.length) {
+                updateFileName(audioFile.files[0].name);
+            }
+        });
+
+        function updateFileName(name) {
+            fileName.textContent = name;
+            gsap.from(fileName, {
+                opacity: 0,
+                y: 10,
+                duration: 0.3
+            });
+        }
+
+        // Upload handler
+        uploadButton.addEventListener('click', async () => {
+            if (!audioFile.files.length) return;
+
+            error.classList.add('hidden');
+            result.classList.add('hidden');
+            loading.classList.remove('hidden');
+            progressContainer.classList.remove('hidden');
+
+            // Simulate upload progress
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 5;
+                progressBar.style.width = `${progress}%`;
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        handleUpload();
+                    }, 500);
+                }
+            }, 100);
+        });
+
+        async function handleUpload() {
+            const formData = new FormData();
+            formData.append('audio', audioFile.files[0]);
+
+            try {
+                const response = await fetch('/process_audio', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    transcription.textContent = data.transcription;
+                    analysis.textContent = data.analysis;
+                    result.classList.remove('hidden');
+                    translationResult.classList.add('hidden');
+                    gsap.from(result, {
+                        opacity: 0,
+                        y: 20,
+                        duration: 0.6
+                    });
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (err) {
+                error.textContent = err.message;
+                error.classList.remove('hidden');
+                gsap.from(error, {
+                    opacity: 0,
+                    y: 20,
+                    duration: 0.3
+                });
+            } finally {
+                loading.classList.add('hidden');
+                progressContainer.classList.add('hidden');
+                progressBar.style.width = '0%';
+            }
+        }
+
+        // Modal functions
+        function openAboutModal() {
+            document.getElementById('aboutModal').style.display = 'block';
+            gsap.from('.modal-content', {
+                opacity: 0,
+                y: -50,
+                duration: 0.3
+            });
+        }
+
+        function closeAboutModal() {
+            document.getElementById('aboutModal').style.display = 'none';
+        }
+
+        function downloadReport() {
+            const pdfUrl = '/static/Report/Kannada Dialect Detector.pdf';  // relative web path
+            window.open(pdfUrl, '_blank');
+        }
+
+
+        // Translation handler
+        translateButton.addEventListener('click', async () => {
+            const text = transcription.textContent;
+            const targetDialect = document.getElementById('targetDialect').value;
+
+            if (!text) return;
+
+            try {
+                const response = await fetch('/translate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        target_dialect: targetDialect
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    translatedText.textContent = data.translation;
+                    translationResult.classList.remove('hidden');
+                    gsap.from(translationResult, {
+                        opacity: 0,
+                        y: 20,
+                        duration: 0.3
+                    });
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (err) {
+                error.textContent = 'Translation error: ' + err.message;
+                error.classList.remove('hidden');
+                gsap.from(error, {
+                    opacity: 0,
+                    y: 20,
+                    duration: 0.3
+                });
+            }
+        });
+
+        // Audio playback management
+        let currentAudio = null;
+        let currentPlayingButton = null;
+
+        async function toggleAudio(elementId) {
+            const button = document.querySelector(`#${elementId}`).nextElementSibling;
+            const icon = button.querySelector('i');
+
+            // If there's currently playing audio
+            if (currentAudio && currentPlayingButton === button) {
+                currentAudio.pause();
+                currentAudio = null;
+                resetButton(button);
+                return;
+            }
+
+            // Stop any other playing audio
+            if (currentAudio) {
+                currentAudio.pause();
+                resetButton(currentPlayingButton);
+                currentAudio = null;
+            }
+
+            const text = document.getElementById(elementId).textContent;
+            if (!text) return;
+
+            try {
+                // Update button state to loading
+                icon.classList.remove('fa-play');
+                icon.classList.add('fa-spinner', 'fa-spin');
+
+                // Get audio data
+                const response = await fetch('/text-to-speech', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    // Create and play audio
+                    const audio = new Audio('data:audio/mp3;base64,' + data.audio);
+                    currentAudio = audio;
+                    currentPlayingButton = button;
+
+                    // Update button state to playing
+                    icon.classList.remove('fa-spinner', 'fa-spin');
+                    icon.classList.add('fa-pause');
+                    button.classList.add('bg-red-500', 'bg-opacity-30');
+
+                    // Play audio
+                    await audio.play();
+
+                    // Reset button state after playback ends
+                    audio.onended = () => {
+                        resetButton(button);
+                        currentAudio = null;
+                        currentPlayingButton = null;
+                    };
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (err) {
+                error.textContent = 'Audio playback error: ' + err.message;
+                error.classList.remove('hidden');
+                gsap.from(error, {
+                    opacity: 0,
+                    y: 20,
+                    duration: 0.3
+                });
+                resetButton(button);
+            }
+        }
+
+        // Reset button state
+        function resetButton(button) {
+            const icon = button.querySelector('i');
+            icon.classList.remove('fa-pause', 'fa-spinner', 'fa-spin');
+            icon.classList.add('fa-play');
+            button.classList.remove('bg-red-500', 'bg-opacity-30');
+        }
+
+        // Initialize page animations
+        document.addEventListener('DOMContentLoaded', () => {
+            gsap.from('.glass-container', {
+                opacity: 0,
+                y: 20,
+                duration: 0.6
+            });
+
+            gsap.from('.floating-menu', {
+                opacity: 0,
+                x: 50,
+                duration: 0.6,
+                delay: 0.3
+            });
+        });
+
+        // Close modal when clicking outside
+        window.onclick = function (event) {
+            const modal = document.getElementById('aboutModal');
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+    </script>
+</body>
+
+</html>

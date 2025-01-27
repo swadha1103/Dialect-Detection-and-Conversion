@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kannada Dialect Detector</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <style>
+        :root {
+            --glow-color: #00ff88;
+            --glow-spread-color: rgba(0, 255, 136, 0.781);
+            --btn-color: rgb(61, 61, 61);
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            text-align: center;
+            overflow-x: hidden;
+        }
+
+        video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+
+        .container {
+            background: rgba(20, 20, 50, 0.7);
+            padding: 3rem;
+            border-radius: 20px;
+            margin: 2rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(rgba(20, 20, 50, 0.7));
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+            max-width: 600px;
+            width: 90%;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #00ff88, #00ffee);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            opacity: 0;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .glow-btn {
+            position: relative;
+            color: var(--glow-color);
+            cursor: pointer;
+            padding: 0.8em 2.2em;
+            border: 0.15em solid var(--glow-color);
+            border-radius: 0.45em;
+            background: none;
+            font-size: 1.2rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            transition: all 0.3s;
+            box-shadow: inset 0px 0px 0.5em 0px var(--glow-color),
+                0px 0px 0.5em 0px var(--glow-color);
+        }
+
+        .glow-btn:hover {
+            color: var(--btn-color);
+            background-color: var(--glow-color);
+            box-shadow: 0 0 1em 0.25em var(--glow-color),
+                0 0 4em 2em var(--glow-spread-color),
+                inset 0 0 0.75em 0.25em var(--glow-color);
+            transform: translateY(-5px);
+        }
+
+        .glow-btn:active {
+            box-shadow: 0 0 0.6em 0.25em var(--glow-color),
+                0 0 2.5em 2em var(--glow-spread-color),
+                inset 0 0 0.5em 0.25em var(--glow-color);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <video autoplay muted loop>
+        <source src="https://cdn.dribbble.com/userupload/15822037/file/original-9433d8588f791a0e2c1807b8e909dd21.mp4" type="video/mp4">
+    </video>
+    <div class="container">
+        <h1 id="title">Kannada Dialect Detector</h1>
+        <div class="button-container">
+            <a href="/realtime" class="glow-btn">
+                <i class="fas fa-microphone"></i>
+                Real-time Recording
+            </a>
+            <a href="/local" class="glow-btn">
+                <i class="fas fa-upload"></i>
+                Local File Upload
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Animation for title
+        gsap.to("#title", {
+            duration: 1,
+            opacity: 1,
+            y: 0,
+            ease: "power4.out",
+            delay: 0.5
+        });
+
+        // Button hover effects
+        document.querySelectorAll('.glow-btn').forEach(button => {
+            button.addEventListener('mouseenter', (e) => {
+                gsap.to(e.target, {
+                    scale: 1.05,
+                    duration: 0.3
+                });
+            });
+
+            button.addEventListener('mouseleave', (e) => {
+                gsap.to(e.target, {
+                    scale: 1,
+                    duration: 0.3
+                });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Real-time Dialect Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <nav class="mb-8">
+            <a href="/" class="text-blue-500 hover:text-blue-700">← Back to Home</a>
+        </nav>
+
+        <h1 class="text-3xl font-bold mb-8 text-center">Real-time Dialect Detection</h1>
+        
+        <div class="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-md">
+            <button id="startRecording" class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 mb-4">
+                Start Recording
+            </button>
+
+            <!-- Recording Indicator -->
+            <div id="recordingIndicator" class="hidden mb-4">
+                <div class="flex items-center justify-center space-x-2">
+                    <div class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                    <span>Listening...</span>
+                </div>
+            </div>
+            
+            <div id="result" class="mt-4 hidden">
+                <!-- Transcription with Play Button -->
+                <div class="mb-6">
+                    <h3 class="font-bold mb-2">Transcription:</h3>
+                    <div class="flex items-start space-x-4">
+                        <div id="transcription" class="flex-grow p-4 bg-gray-50 rounded-lg border border-gray-200"></div>
+                        <button onclick="toggleAudio('transcription')" class="play-button bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Analysis with Play Button -->
+                <div class="mb-6">
+                    <h3 class="font-bold mb-2">Dialect Analysis:</h3>
+                    <div class="flex items-start space-x-4">
+                        <div id="analysis" class="flex-grow p-4 bg-gray-50 rounded-lg border border-gray-200 whitespace-pre-line"></div>
+                        <button onclick="toggleAudio('analysis')" class="play-button bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <label class="block mb-2">Translate to:</label>
+                    <select id="targetDialect" class="w-full p-2 border rounded mb-2">
+                        {% for dialect in dialects %}
+                        <option value="{{ dialect }}">{{ dialect }}</option>
+                        {% endfor %}
+                    </select>
+                    <button id="translate" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                        Translate
+                    </button>
+                </div>
+                
+                <!-- Translation with Play Button -->
+                <div id="translation" class="mt-4 hidden">
+                    <h3 class="font-bold mb-2">Translation:</h3>
+                    <div class="flex items-start space-x-4">
+                        <div id="translatedText" class="flex-grow p-4 bg-gray-50 rounded-lg border border-gray-200 whitespace-pre-line"></div>
+                        <button onclick="toggleAudio('translatedText')" class="play-button bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error Display -->
+            <div id="error" class="hidden mt-4 p-4 bg-red-100 text-red-700 rounded-lg"></div>
+        </div>
+    </div>
+    
+    <script>
+        let currentAudio = null;
+        let currentPlayingButton = null;
+
+        document.getElementById('startRecording').addEventListener('click', async () => {
+            const recordingIndicator = document.getElementById('recordingIndicator');
+            recordingIndicator.classList.remove('hidden');
+            
+            try {
+                const response = await fetch('/transcribe', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    document.getElementById('result').classList.remove('hidden');
+                    document.getElementById('transcription').textContent = data.transcription;
+                    document.getElementById('analysis').textContent = data.analysis;
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                alert('Error recording audio');
+            } finally {
+                recordingIndicator.classList.add('hidden');
+            }
+        });
+
+        document.getElementById('translate').addEventListener('click', async () => {
+            const text = document.getElementById('transcription').textContent;
+            const targetDialect = document.getElementById('targetDialect').value;
+            
+            try {
+                const response = await fetch('/translate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text, target_dialect: targetDialect })
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    document.getElementById('translation').classList.remove('hidden');
+                    document.getElementById('translatedText').textContent = data.translation;
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                alert('Error translating text');
+            }
+        });
+
+        async function toggleAudio(elementId) {
+            const button = document.querySelector(`#${elementId}`).nextElementSibling;
+            
+            if (currentAudio && currentPlayingButton === button) {
+                currentAudio.pause();
+                currentAudio = null;
+                currentPlayingButton = null;
+                resetButton(button);
+                return;
+            }
+
+            if (currentAudio) {
+                currentAudio.pause();
+                resetButton(currentPlayingButton);
+                currentAudio = null;
+                currentPlayingButton = null;
+            }
+
+            const text = document.getElementById(elementId).textContent;
+            if (!text) return;
+
+            try {
+                const response = await fetch('/text-to-speech', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    const audio = new Audio('data:audio/mp3;base64,' + data.audio);
+                    currentAudio = audio;
+                    currentPlayingButton = button;
+                    
+                    button.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                    button.classList.add('bg-red-500', 'hover:bg-red-600');
+
+                    await audio.play();
+
+                    audio.onended = () => {
+                        resetButton(button);
+                        currentAudio = null;
+                        currentPlayingButton = null;
+                    };
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (err) {
+                const error = document.getElementById('error');
+                error.textContent = 'Audio playback error: ' + err.message;
+                error.classList.remove('hidden');
+                setTimeout(() => {
+                    error.classList.add('hidden');
+                }, 3000);
+            }
+        }
+
+        function resetButton(button) {
+            if (button) {
+                button.classList.remove('bg-red-500', 'hover:bg-red-600');
+                button.classList.add('bg-blue-500', 'hover:bg-blue-600');
+            }
+        }
+    </script>
+</body>
+</html>

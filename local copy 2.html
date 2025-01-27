@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Local File Dialect Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <nav class="mb-8">
+            <a href="/" class="text-blue-500 hover:text-blue-700">← Back to Home</a>
+        </nav>
+
+        <h1 class="text-3xl font-bold mb-8 text-center">Kannada Dialect Detection - Local File</h1>
+        
+        <div class="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-md">
+            <!-- File Upload Section -->
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="audioFile">
+                    Select Audio File (WAV format recommended)
+                </label>
+                <input type="file" 
+                       accept="audio/*" 
+                       id="audioFile" 
+                       class="w-full p-2 border rounded-lg border-gray-300 focus:outline-none focus:border-blue-500">
+            </div>
+
+            <button id="uploadButton" 
+                    class="w-full bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-400">
+                Upload and Analyze
+            </button>
+
+            <!-- Loading Indicator -->
+            <div id="loading" class="hidden mt-4">
+                <div class="flex items-center justify-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                    <span class="ml-2">Processing audio...</span>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div id="result" class="mt-6 hidden">
+                <!-- Transcription -->
+                <div class="mb-6">
+                    <h3 class="font-bold text-lg mb-2">Transcription:</h3>
+                    <div class="flex items-start space-x-4">
+                        <div id="transcription" class="flex-grow p-4 bg-gray-50 rounded-lg border border-gray-200"></div>
+                        <button onclick="toggleAudio('transcription')" class="play-button bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Dialect Analysis -->
+                <div class="mb-6">
+                    <h3 class="font-bold text-lg mb-2">Dialect Analysis:</h3>
+                    <div class="flex items-start space-x-4">
+                        <div id="analysis" class="flex-grow p-4 bg-gray-50 rounded-lg border border-gray-200 whitespace-pre-line"></div>
+                        <button onclick="toggleAudio('analysis')" class="play-button bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Translation Section -->
+                <div class="mt-6">
+                    <h3 class="font-bold text-lg mb-2">Translate to Another Dialect:</h3>
+                    <select id="targetDialect" class="w-full p-2 border rounded-lg mb-4">
+                        {% for dialect in dialects %}
+                        <option value="{{ dialect }}">{{ dialect }}</option>
+                        {% endfor %}
+                    </select>
+                    
+                    <button id="translateButton" 
+                            class="w-full bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-colors">
+                        Translate
+                    </button>
+                </div>
+
+                <!-- Translation Result -->
+                <div id="translationResult" class="mt-6 hidden">
+                    <h3 class="font-bold text-lg mb-2">Translation:</h3>
+                    <div class="flex items-start space-x-4">
+                        <div id="translatedText" class="flex-grow p-4 bg-gray-50 rounded-lg border border-gray-200 whitespace-pre-line"></div>
+                        <button onclick="toggleAudio('translatedText')" class="play-button bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error Display -->
+            <div id="error" class="hidden mt-4 p-4 bg-red-100 text-red-700 rounded-lg"></div>
+        </div>
+    </div>
+
+    <script>
+        // Elements
+        const audioFile = document.getElementById('audioFile');
+        const uploadButton = document.getElementById('uploadButton');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        const error = document.getElementById('error');
+        const transcription = document.getElementById('transcription');
+        const analysis = document.getElementById('analysis');
+        const translateButton = document.getElementById('translateButton');
+        const translationResult = document.getElementById('translationResult');
+        const translatedText = document.getElementById('translatedText');
+
+        // Audio state management
+        let currentAudio = null;
+        let currentPlayingButton = null;
+
+        // Disable upload button if no file selected
+        audioFile.addEventListener('change', () => {
+            uploadButton.disabled = !audioFile.files.length;
+        });
+
+        // Handle file upload and analysis
+        uploadButton.addEventListener('click', async () => {
+            if (!audioFile.files.length) return;
+
+            // Reset UI
+            error.classList.add('hidden');
+            result.classList.add('hidden');
+            loading.classList.remove('hidden');
+
+            const formData = new FormData();
+            formData.append('audio', audioFile.files[0]);
+
+            try {
+                const response = await fetch('/process_audio', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    transcription.textContent = data.transcription;
+                    analysis.textContent = data.analysis;
+                    result.classList.remove('hidden');
+                    translationResult.classList.add('hidden');
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (err) {
+                error.textContent = err.message;
+                error.classList.remove('hidden');
+            } finally {
+                loading.classList.add('hidden');
+            }
+        });
+
+        // Handle translation
+        translateButton.addEventListener('click', async () => {
+            const text = transcription.textContent;
+            const targetDialect = document.getElementById('targetDialect').value;
+
+            if (!text) return;
+
+            try {
+                const response = await fetch('/translate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        target_dialect: targetDialect
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    translatedText.textContent = data.translation;
+                    translationResult.classList.remove('hidden');
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (err) {
+                error.textContent = 'Translation error: ' + err.message;
+                error.classList.remove('hidden');
+            }
+        });
+
+        // Toggle audio playback
+        async function toggleAudio(elementId) {
+            const button = document.querySelector(`#${elementId}`).nextElementSibling;
+            
+            // If there's currently playing audio
+            if (currentAudio && currentPlayingButton === button) {
+                currentAudio.pause();
+                currentAudio = null;
+                resetButton(button);
+                return;
+            }
+
+            // Stop any other playing audio
+            if (currentAudio) {
+                currentAudio.pause();
+                resetButton(currentPlayingButton);
+                currentAudio = null;
+            }
+
+            const text = document.getElementById(elementId).textContent;
+            if (!text) return;
+
+            try {
+                // Get audio data
+                const response = await fetch('/text-to-speech', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    // Create and play audio
+                    const audio = new Audio('data:audio/mp3;base64,' + data.audio);
+                    currentAudio = audio;
+                    currentPlayingButton = button;
+                    
+                    // Update button state to playing (red)
+                    button.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                    button.classList.add('bg-red-500', 'hover:bg-red-600');
+
+                    // Play audio
+                    await audio.play();
+
+                    // Reset button state after playback ends
+                    audio.onended = () => {
+                        resetButton(button);
+                        currentAudio = null;
+                        currentPlayingButton = null;
+                    };
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (err) {
+                error.textContent = 'Audio playback error: ' + err.message;
+                error.classList.remove('hidden');
+            }
+        }
+
+        // Reset button state to default (blue)
+        function resetButton(button) {
+            button.classList.remove('bg-red-500', 'hover:bg-red-600');
+            button.classList.add('bg-blue-500', 'hover:bg-blue-600');
+        }
+    </script>
+</body>
+</html>
